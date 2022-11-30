@@ -1,5 +1,6 @@
 const Project = require("../models/Project");
 const Client = require("../models/Client");
+const Review = require("../models/Review")
 
 const {
   GraphQLObjectType,
@@ -7,7 +8,9 @@ const {
   GraphQLSchema,
   GraphQLList,
   GraphQLEnumType,
-  GraphQLNonNull
+  GraphQLNonNull,
+  GraphQLID,
+  GraphQLInt
 } = require("graphql");
 
 let NotNull = new GraphQLNonNull(GraphQLString);
@@ -15,7 +18,7 @@ let NotNull = new GraphQLNonNull(GraphQLString);
 const ProjectT = new GraphQLObjectType({
   name: "Project",
   fields: () => ({
-    id: { type: GraphQLString },
+    id: { type: GraphQLID },
     clientId: { type: GraphQLString },
     name: { type: GraphQLString },
     status: { type: GraphQLString },
@@ -23,7 +26,7 @@ const ProjectT = new GraphQLObjectType({
     client: {
       type: ClientT,
       resolve(parent, args) {
-        return Project.findById(parent.clientId);
+        return Client.findById(parent.clientId);
       },
     },
   }),
@@ -32,11 +35,22 @@ const ProjectT = new GraphQLObjectType({
 const ClientT = new GraphQLObjectType({
   name: "Client",
   fields: () => ({
-    id: { type: GraphQLString },
+    id: { type: GraphQLID },
     name: { type: GraphQLString },
     email: { type: GraphQLString },
     phone: { type: GraphQLString },
   }),
+});
+
+
+const ReviewT = new GraphQLObjectType({
+  name: "Review",
+  fields: () => ({
+    id: { type: GraphQLID },
+    email: { type: GraphQLString },
+    suggestion: { type: GraphQLString },
+    rating: { type: GraphQLInt },
+  })
 });
 
 // Root Query is a object data type like project and client which has various queries as fields
@@ -47,7 +61,7 @@ const query = new GraphQLObjectType({
     project: {
       type: ProjectT,
       args: {
-        id: { type: GraphQLString },
+        id: { type: GraphQLID },
       },
       resolve(parent, args) {
         return Project.findById(args.id);
@@ -56,7 +70,7 @@ const query = new GraphQLObjectType({
     client: {
       type: ClientT,
       args: {
-        id: { type: GraphQLString },
+        id: { type: GraphQLID },
       },
       resolve(parent, args) {
         return Client.findById(args.id);
@@ -107,15 +121,15 @@ const mutation = new GraphQLObjectType({
           type: new GraphQLEnumType({
             name: "Status",
             values: {
-              new: { value: "Not Started" },
-              progress: { value: "In Progress" },
-              done: { value: "Completed" }
+              New: { value: "Not Started" },
+              InProgress: { value: "In Progress" },
+              Done: { value: "Completed" }
             }
           }),
           defaultValue: "Not Started"
         },
         description: { type: GraphQLString },
-        clientId: { type: NotNull },
+        clientId: { type: GraphQLID },
       },
       resolve(parent, args) {
         const newProject = new Project({
@@ -130,25 +144,31 @@ const mutation = new GraphQLObjectType({
       deleteProject: {
         type: ProjectT,
         args: {
-          id: { type: NotNull },
+          id: { type: GraphQLID },
         },
         resolve(parent, args) {
+          
           return Project.findByIdAndRemove(args.id);
         }
       },
       deleteClient: {
         type: ClientT,
         args: {
-          id: { type: NotNull },
+          id: { type: GraphQLID },
         },
         resolve(parent, args) {
+          Project.deleteMany({clientId: args.id}, function(err) {
+            if(err) console.log(err);
+            console.log("Successful deletion");
+          }
+          );
           return Client.findByIdAndRemove(args.id);
         }
       },
       updateProject: {
         type: ProjectT,
         args: {
-          id: { type: NotNull },
+          id: { type: GraphQLID },
           name: { type: GraphQLString },
           status: {
             type: new GraphQLEnumType({
@@ -172,6 +192,22 @@ const mutation = new GraphQLObjectType({
           return Project.findByIdAndUpdate(args.id, updatedProject, { new: true });
         }
         },
+        addReview: {
+          type: ReviewT,
+          args: {
+            email:{type:GraphQLString},
+            suggestion:{type:GraphQLString},
+            rating:{type:GraphQLInt}
+          },
+          resolve(parent,args) {
+            const review = new Review({
+              email:args.email,
+              suggestion:args.suggestion,
+              rating:args.rating
+            })
+            return review.save();
+          }
+        }
       }
     
   });
