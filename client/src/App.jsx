@@ -6,7 +6,7 @@ import ProjectDet from "./components/ProjectDet";
 import LearnMore from "./components/LearnMore";
 function App() {
   const client = new ApolloClient({
-    uri: "http://localhost:8000/graphql",
+    uri: "https://ProjectWala.varunsingh23.repl.co",
     cache: new InMemoryCache(),
   });
   return (
